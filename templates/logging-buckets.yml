@@ -1,19 +1,39 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Logging Buckets for AWS CloudTrail and Config with archiving
 Parameters:
-    pSupportsGlacier:
-        Description: Determines whether this region supports Glacier (passed in from Main template)
+    pArchiveLogsBucket:
+        Description: Name of the Archive logs bucket
+        Type: String
+        Default: archivelogs-bucket
+    pConfigBucket:
+        Description: Name of the Config bucket
+        Type: String
+        Default: configbucket
+    pCloudTrailBucket:
+        Description: Name of the Cloud Trail bucket
+        Type: String
+        Default: cloudtrail-bucket 
+    pVpcFlowLogsBucket:
+        Description: Name of the VPC Flow logs bucket
+        Type: String
+        Default: vpc-flowlogs-bucket
+    pCFTemplateBucket:
+        Description: Name of the Cloudformation Template bucket
+        Type: String
+        Default: cf-template-bucket
+    pUseGlacier:
+        Description: Determines whether this region supports Glacier
         Type: String
         Default: true
 Conditions:
-    IsGovCloud: !Equals [ us-gov-west-1, !Ref 'AWS::Region' ]
-    SupportsGlacier: !Equals [ true, !Ref pSupportsGlacier ]
+    UseGlacier: !Equals [ true, !Ref pUseGlacier ]
 Resources:
     rArchiveLogsBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
         Properties:
             AccessControl: LogDeliveryWrite
+            BucketName: !Ref pArchiveLogsBucket
             LifecycleConfiguration:
                 Rules:
                   - Id: Transition90daysRetain7yrs
@@ -21,23 +41,21 @@ Resources:
                     ExpirationInDays: 2555
                     Transition:
                         TransitionInDays: 90
-                        StorageClass: !If [ SupportsGlacier, GLACIER, STANDARD_IA ]
+                        StorageClass: !If [ UseGlacier, GLACIER, STANDARD_IA ]
             VersioningConfiguration:
                 Status: Enabled
     rArchiveLogsBucketPolicy:
         Type: AWS::S3::BucketPolicy
         DependsOn: rArchiveLogsBucket
         Properties:
-            Bucket: !Ref rArchiveLogsBucket
+            Bucket: !Ref pArchiveLogsBucket
             PolicyDocument:
                 Statement:
                   - Sid: Enforce HTTPS Connections
                     Action: s3:*
                     Effect: Deny
                     Principal: '*'
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rArchiveLogsBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rArchiveLogsBucket}/*
                     Condition:
                         Bool:
                             aws:SecureTransport: false
@@ -45,14 +63,13 @@ Resources:
                     Action: s3:Delete*
                     Effect: Deny
                     Principal: '*'
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rArchiveLogsBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rArchiveLogsBucket}/*
     rConfigBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
         Properties:
             AccessControl: Private
+            BucketName: !Ref pConfigBucket
             VersioningConfiguration:
                 Status: Enabled
             LoggingConfiguration:
@@ -65,22 +82,18 @@ Resources:
             Bucket: !Ref rConfigBucket
             PolicyDocument:
                 Statement:
-                  - Sid: AWSConfigAclCheck20150319
+                  - Sid: AWSConfigAclCheck
                     Effect: Allow
                     Principal:
                         Service: config.amazonaws.com
                     Action: s3:GetBucketAcl
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rConfigBucket}
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
-                  - Sid: AWSConfigWrite20150319
+                    Resource: !Sub arn:aws:s3:::${rConfigBucket}
+                  - Sid: AWSConfigWrite
                     Effect: Allow
                     Principal:
                         Service: config.amazonaws.com
                     Action: s3:PutObject
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rConfigBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rConfigBucket}/*
                     Condition:
                         StringEquals:
                             s3:x-amz-acl: bucket-owner-full-control
@@ -88,9 +101,7 @@ Resources:
                     Action: s3:*
                     Effect: Deny
                     Principal: '*'
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rConfigBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rConfigBucket}/*
                     Condition:
                         Bool:
                             aws:SecureTransport: false
@@ -98,16 +109,12 @@ Resources:
                     Action: s3:Delete*
                     Effect: Deny
                     Principal: '*'
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rConfigBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rConfigBucket}/*
                   - Sid: DenyUnEncryptedObjectUploads
                     Effect: Deny
                     Principal: '*'
                     Action: s3:PutObject
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rConfigBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rConfigBucket}/*
                     Condition:
                         StringNotEquals:
                             s3:x-amz-server-side-encryption: AES256
@@ -116,6 +123,7 @@ Resources:
         DeletionPolicy: Retain
         Properties:
             AccessControl: Private
+            BucketName: !Ref pCloudTrailBucket
             VersioningConfiguration:
                 Status: Enabled
             LoggingConfiguration:
@@ -128,22 +136,18 @@ Resources:
             Bucket: !Ref rCloudTrailBucket
             PolicyDocument:
                 Statement:
-                  - Sid: AWSCloudTrailAclCheck20150319
+                  - Sid: AWSCloudTrailAclCheck
                     Effect: Allow
                     Principal:
                         Service: cloudtrail.amazonaws.com
                     Action: s3:GetBucketAcl
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rCloudTrailBucket}
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
-                  - Sid: AWSCloudTrailWrite20150319
+                    Resource: !Sub arn:aws:s3:::${rCloudTrailBucket}
+                  - Sid: AWSCloudTrailWrite
                     Effect: Allow
                     Principal:
                         Service: cloudtrail.amazonaws.com
                     Action: s3:PutObject
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rCloudTrailBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rCloudTrailBucket}/*
                     Condition:
                         StringEquals:
                             s3:x-amz-acl: bucket-owner-full-control
@@ -151,9 +155,7 @@ Resources:
                     Action: s3:*
                     Effect: Deny
                     Principal: '*'
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rCloudTrailBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rCloudTrailBucket}/*
                     Condition:
                         Bool:
                             aws:SecureTransport: false
@@ -161,16 +163,95 @@ Resources:
                     Action: s3:Delete*
                     Effect: Deny
                     Principal: '*'
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rCloudTrailBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rCloudTrailBucket}/*
                   - Sid: DenyUnEncryptedObjectUploads
                     Effect: Deny
                     Principal: '*'
                     Action: s3:PutObject
-                    Resource: !Sub
-                      - arn:${Partition}:s3:::${rCloudTrailBucket}/*
-                      - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                    Resource: !Sub arn:aws:s3:::${rCloudTrailBucket}/*
+                    Condition:
+                        StringNotEquals:
+                            s3:x-amz-server-side-encryption: AES256
+    rVpcFlowLogsBucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: Retain
+        Properties:
+            AccessControl: Private
+            BucketName: !Ref pVpcFlowLogsBucket
+            VersioningConfiguration:
+                Status: Enabled
+            LoggingConfiguration:
+                DestinationBucketName: !Ref rArchiveLogsBucket
+                LogFilePrefix: vpcflowlogs
+    rVpcFlowLogsS3Policy:
+        Type: AWS::S3::BucketPolicy
+        DependsOn: rVpcFlowLogsBucket
+        Properties:
+            Bucket: !Ref rVpcFlowLogsBucket
+            PolicyDocument:
+                Statement:
+                  - Sid: AWSLogDeliveryAclCheck
+                    Effect: Allow
+                    Principal:
+                        Service: delivery.logs.amazonaws.com
+                    Action: s3:GetBucketAcl
+                    Resource: !Sub arn:aws:s3:::${rVpcFlowLogsBucket}
+                  - Sid: AWSLogDeliveryWrite
+                    Effect: Allow
+                    Principal:
+                        Service: delivery.logs.amazonaws.com
+                    Action: s3:PutObject
+                    Resource: !Sub arn:aws:s3:::${rVpcFlowLogsBucket}/*
+                    Condition:
+                        StringEquals:
+                            s3:x-amz-acl: bucket-owner-full-control
+                  - Sid: Enforce HTTPS Connections
+                    Action: s3:*
+                    Effect: Deny
+                    Principal: '*'
+                    Resource: !Sub arn:aws:s3:::${rVpcFlowLogsBucket}/*
+                    Condition:
+                        Bool:
+                            aws:SecureTransport: false
+                  - Sid: Restrict Delete* Actions
+                    Action: s3:Delete*
+                    Effect: Deny
+                    Principal: '*'
+                    Resource: !Sub arn:aws:s3:::${rVpcFlowLogsBucket}/*
+                  - Sid: DenyUnEncryptedObjectUploads
+                    Effect: Deny
+                    Principal: '*'
+                    Action: s3:PutObject
+                    Resource: !Sub arn:aws:s3:::${rVpcFlowLogsBucket}/*
+                    Condition:
+                        StringNotEquals:
+                            s3:x-amz-server-side-encryption: AES256
+    rCFTemplateBucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: Retain
+        Properties:
+            AccessControl: Private
+            BucketName: !Ref pCFTemplateBucket
+    rCFTemplateBucketS3Policy:
+        Type: AWS::S3::BucketPolicy
+        DependsOn: rCFTemplateBucket
+        Properties:
+            Bucket: !Ref rCFTemplateBucket
+            PolicyDocument:
+                Statement:
+                  - Sid: Enforce HTTPS Connections
+                    Action: s3:*
+                    Effect: Deny
+                    Principal: '*'
+                    Resource: !Sub arn:aws:s3:::${rCFTemplateBucket}/*
+                    Condition:
+                        Bool:
+                            aws:SecureTransport: false
+                  - Sid: DenyUnEncryptedObjectUploads
+                    Effect: Deny
+                    Principal: '*'
+                    Action: s3:PutObject
+                    Resource: !Sub arn:aws:s3:::${rCFTemplateBucket}/*
                     Condition:
                         StringNotEquals:
                             s3:x-amz-server-side-encryption: AES256
@@ -181,3 +262,7 @@ Outputs:
         Value: !Ref rConfigBucket
     rCloudTrailBucket:
         Value: !Ref rCloudTrailBucket
+    rCFTemplateBucket:
+        Value: !Ref rCFTemplateBucket
+    rVpcFlowLogsBucket:
+        Value: !Ref rVpcFlowLogsBucket
