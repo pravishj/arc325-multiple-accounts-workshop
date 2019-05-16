@@ -1,14 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: S3 Buckets for AWS CloudTrail,VPC Flowlogs,Tempalates and Config with archiving
+Description: S3 Buckets for AWS CloudTrail,VPC Flowlogs,Cloudformation Tempalates and Config with archiving
 Parameters:
     pArchiveLogsBucket:
         Description: Name of the Archive logs bucket
         Type: String
         Default: archivelogs-bucket
-    pEnvironment:
-        Description: environment for which bucket is created
-        Type: String
-        Default: tst
     pConfigBucket:
         Description: Name of the Config bucket
         Type: String
@@ -20,7 +16,7 @@ Parameters:
     pS3LogsBucket:
         Description: Name of the s3 Logs Bucket bucket
         Type: String
-        Default: cloudtrail-bucket 
+        Default: s3logs-bucket
     pVpcFlowLogsBucket:
         Description: Name of the VPC Flow logs bucket
         Type: String

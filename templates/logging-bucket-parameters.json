@@ -1,6 +1,26 @@
 [
   {
-      "ParameterKey": "pSupportsGlacier",
-      "ParameterValue": "true"
+      "ParameterKey": "pArchiveLogsBucket",
+      "ParameterValue": "archivelogs-bucket"
+  },  
+  {
+    "ParameterKey": "pConfigBucket",
+    "ParameterValue": "config-bucket"
+  },
+  {
+    "ParameterKey": "pCloudTrailBucket",
+    "ParameterValue": "cloudtrail-bucket"
+  },
+  {
+    "ParameterKey": "pS3LogsBucket",
+    "ParameterValue": "s3logs-bucket"
+  },
+  {
+    "ParameterKey": "pVpcFlowLogsBucket",
+    "ParameterValue": "vpc-flowlogs-bucket"
+  },
+  {
+    "ParameterKey": "pCFTemplateBucket",
+    "ParameterValue": "cf-template-bucket"
   }
 ]

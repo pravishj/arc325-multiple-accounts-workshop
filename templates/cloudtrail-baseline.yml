@@ -43,13 +43,13 @@ Resources:
                 PolicyDocument:
                     Version: 2012-10-17
                     Statement:
-                      - Sid: AWSCloudTrailCreateLogStream20141101
+                      - Sid: AWSCloudTrailCreateLogStream
                         Effect: Allow
                         Action:
                           - logs:CreateLogStream
                         Resource: !Sub
                           - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
-                      - Sid: AWSCloudTrailPutLogEvents20141101
+                      - Sid: AWSCloudTrailPutLogEvents
                         Effect: Allow
                         Action:
                           - logs:PutLogEvents
