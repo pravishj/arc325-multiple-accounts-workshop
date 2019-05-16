@@ -1,16 +1,24 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Logging Buckets for AWS CloudTrail and Config with archiving
+Description: S3 Buckets for AWS CloudTrail,VPC Flowlogs,Tempalates and Config with archiving
 Parameters:
     pArchiveLogsBucket:
         Description: Name of the Archive logs bucket
         Type: String
         Default: archivelogs-bucket
+    pEnvironment:
+        Description: environment for which bucket is created
+        Type: String
+        Default: tst
     pConfigBucket:
         Description: Name of the Config bucket
         Type: String
-        Default: configbucket
+        Default: config-bucket
     pCloudTrailBucket:
         Description: Name of the Cloud Trail bucket
+        Type: String
+        Default: cloudtrail-bucket 
+    pS3LogsBucket:
+        Description: Name of the s3 Logs Bucket bucket
         Type: String
         Default: cloudtrail-bucket 
     pVpcFlowLogsBucket:
@@ -21,13 +29,43 @@ Parameters:
         Description: Name of the Cloudformation Template bucket
         Type: String
         Default: cf-template-bucket
-    pUseGlacier:
-        Description: Determines whether this region supports Glacier
-        Type: String
-        Default: true
-Conditions:
-    UseGlacier: !Equals [ true, !Ref pUseGlacier ]
 Resources:
+    rS3LogsBucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: Retain
+        Properties:
+            AccessControl: LogDeliveryWrite
+            BucketName: !Ref pS3LogsBucket
+            LifecycleConfiguration:
+                Rules:
+                  - Id: Transition90daysRetain7yrs
+                    Status: Enabled
+                    ExpirationInDays: 2555
+                    Transition:
+                        TransitionInDays: 90
+                        StorageClass: GLACIER
+            VersioningConfiguration:
+                Status: Enabled
+    rS3LogsBucketPolicy:
+        Type: AWS::S3::BucketPolicy
+        DependsOn: rS3LogsBucket
+        Properties:
+            Bucket: !Ref pS3LogsBucket
+            PolicyDocument:
+                Statement:
+                  - Sid: Enforce HTTPS Connections
+                    Action: s3:*
+                    Effect: Deny
+                    Principal: '*'
+                    Resource: !Sub arn:aws:s3:::${rS3LogsBucket}/*
+                    Condition:
+                        Bool:
+                            aws:SecureTransport: false
+                  - Sid: Restrict Delete* Actions
+                    Action: s3:Delete*
+                    Effect: Deny
+                    Principal: '*'
+                    Resource: !Sub arn:aws:s3:::${rArchiveLogsBucket}/*
     rArchiveLogsBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
@@ -41,7 +79,7 @@ Resources:
                     ExpirationInDays: 2555
                     Transition:
                         TransitionInDays: 90
-                        StorageClass: !If [ UseGlacier, GLACIER, STANDARD_IA ]
+                        StorageClass: GLACIER
             VersioningConfiguration:
                 Status: Enabled
     rArchiveLogsBucketPolicy:
@@ -256,6 +294,8 @@ Resources:
                         StringNotEquals:
                             s3:x-amz-server-side-encryption: AES256
 Outputs:
+    rS3LogsBucket:
+        Value: !Ref rS3LogsBucket
     rArchiveLogsBucket:
         Value: !Ref rArchiveLogsBucket
     rConfigBucket:

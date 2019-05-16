@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Denies Access to AWS, based on the Source IP
+Resources:
+    rSourceIPPolicy:
+        Type: AWS::IAM::ManagedPolicy
+        Properties:
+            ManagedPolicyName: "AccessFromSourceIPOnly"
+            PolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                  - Sid: DenyAllUsersAccessFromOutsideOfVHI
+                    Effect: Deny
+                    Action: "*"
+                    Resource: "*"
+                    Condition:
+                      NotIpAddress:
+                        aws:SourceIp:
+                        - 193.104.136.6/24

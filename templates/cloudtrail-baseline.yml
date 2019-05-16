@@ -5,17 +5,10 @@ Parameters:
         Description: Notification email for security events
         Type: String
         Default: ''
-    pSupportsGlacier:
-        Description: Determines hether this region supports Glacier (passed in from Main template)
-        Type: String
-        Default: true
     pCloudTrailBucketName:
         Description: Existing S3 bucket in the central logging account to which you have access
         Type: String
         Default: loggingbuckets-rcloudtrailbucket-examplebucketname
-Conditions:
-    IsGovCloud: !Equals [ us-gov-west-1, !Ref 'AWS::Region' ]
-    SupportsGlacier: !Equals [ true, !Ref pSupportsGlacier ]
 Resources:
     rSecurityAlarmTopic:
         Type: AWS::SNS::Topic
@@ -55,15 +48,13 @@ Resources:
                         Action:
                           - logs:CreateLogStream
                         Resource: !Sub
-                          - arn:${Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
-                          - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                          - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
                       - Sid: AWSCloudTrailPutLogEvents20141101
                         Effect: Allow
                         Action:
                           - logs:PutLogEvents
                         Resource: !Sub
-                          - arn:${Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
-                          - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                          - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
     rCloudTrailRole:
         Type: AWS::IAM::Role
         Properties:
@@ -85,15 +76,13 @@ Resources:
                         Action:
                           - s3:ListBucket
                         Resource: !Sub
-                          - arn:${Partition}:s3:::${pCloudTrailBucketName}
-                          - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                          - arn:aws:s3:::${pCloudTrailBucketName}
                       - Effect: Allow
                         Action:
                           - s3:PutObject
                           - s3:GetObject
                         Resource: !Sub
-                          - arn:${Partition}:s3:::${pCloudTrailBucketName}/*
-                          - { Partition: !If [ IsGovCloud, aws-us-gov, aws ] }
+                          - arn:aws:s3:::${pCloudTrailBucketName}/*
     rCloudTrailProfile:
         Type: AWS::IAM::InstanceProfile
         DependsOn: rCloudTrailRole
