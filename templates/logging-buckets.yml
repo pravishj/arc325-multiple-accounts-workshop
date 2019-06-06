@@ -1,10 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: S3 Buckets for AWS CloudTrail,VPC Flowlogs,Cloudformation Tempalates and Config with archiving
 Parameters:
-    pArchiveLogsBucket:
-        Description: Name of the Archive logs bucket
-        Type: String
-        Default: archivelogs-bucket
     pConfigBucket:
         Description: Name of the Config bucket
         Type: String
@@ -13,10 +9,10 @@ Parameters:
         Description: Name of the Cloud Trail bucket
         Type: String
         Default: cloudtrail-bucket 
-    pS3LogsBucket:
+    pS3AccessLogsBucket:
         Description: Name of the s3 Logs Bucket bucket
         Type: String
-        Default: s3logs-bucket
+        Default: s3Accesslogs-bucket
     pVpcFlowLogsBucket:
         Description: Name of the VPC Flow logs bucket
         Type: String
@@ -31,7 +27,11 @@ Resources:
         DeletionPolicy: Retain
         Properties:
             AccessControl: LogDeliveryWrite
-            BucketName: !Ref pS3LogsBucket
+            BucketName: !Ref pS3AccessLogsBucket
+            BucketEncryption:
+                ServerSideEncryptionConfiguration: 
+                - ServerSideEncryptionByDefault:
+                    SSEAlgorithm: AES256
             LifecycleConfiguration:
                 Rules:
                   - Id: Transition90daysRetain7yrs
@@ -46,7 +46,7 @@ Resources:
         Type: AWS::S3::BucketPolicy
         DependsOn: rS3LogsBucket
         Properties:
-            Bucket: !Ref pS3LogsBucket
+            Bucket: !Ref pS3AccessLogsBucket
             PolicyDocument:
                 Statement:
                   - Sid: Enforce HTTPS Connections
@@ -61,53 +61,21 @@ Resources:
                     Action: s3:Delete*
                     Effect: Deny
                     Principal: '*'
-                    Resource: !Sub arn:aws:s3:::${rArchiveLogsBucket}/*
-    rArchiveLogsBucket:
-        Type: AWS::S3::Bucket
-        DeletionPolicy: Retain
-        Properties:
-            AccessControl: LogDeliveryWrite
-            BucketName: !Ref pArchiveLogsBucket
-            LifecycleConfiguration:
-                Rules:
-                  - Id: Transition90daysRetain7yrs
-                    Status: Enabled
-                    ExpirationInDays: 2555
-                    Transition:
-                        TransitionInDays: 90
-                        StorageClass: GLACIER
-            VersioningConfiguration:
-                Status: Enabled
-    rArchiveLogsBucketPolicy:
-        Type: AWS::S3::BucketPolicy
-        DependsOn: rArchiveLogsBucket
-        Properties:
-            Bucket: !Ref pArchiveLogsBucket
-            PolicyDocument:
-                Statement:
-                  - Sid: Enforce HTTPS Connections
-                    Action: s3:*
-                    Effect: Deny
-                    Principal: '*'
-                    Resource: !Sub arn:aws:s3:::${rArchiveLogsBucket}/*
-                    Condition:
-                        Bool:
-                            aws:SecureTransport: false
-                  - Sid: Restrict Delete* Actions
-                    Action: s3:Delete*
-                    Effect: Deny
-                    Principal: '*'
-                    Resource: !Sub arn:aws:s3:::${rArchiveLogsBucket}/*
+                    Resource: !Sub arn:aws:s3:::${rS3LogsBucket}/*
     rConfigBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
         Properties:
             AccessControl: Private
             BucketName: !Ref pConfigBucket
+            BucketEncryption:
+                ServerSideEncryptionConfiguration: 
+                - ServerSideEncryptionByDefault:
+                    SSEAlgorithm: AES256
             VersioningConfiguration:
                 Status: Enabled
             LoggingConfiguration:
-                DestinationBucketName: !Ref rArchiveLogsBucket
+                DestinationBucketName: !Ref rS3LogsBucket
                 LogFilePrefix: configlogs
     rConfigS3Policy:
         Type: AWS::S3::BucketPolicy
@@ -144,24 +112,20 @@ Resources:
                     Effect: Deny
                     Principal: '*'
                     Resource: !Sub arn:aws:s3:::${rConfigBucket}/*
-                  - Sid: DenyUnEncryptedObjectUploads
-                    Effect: Deny
-                    Principal: '*'
-                    Action: s3:PutObject
-                    Resource: !Sub arn:aws:s3:::${rConfigBucket}/*
-                    Condition:
-                        StringNotEquals:
-                            s3:x-amz-server-side-encryption: AES256
     rCloudTrailBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
         Properties:
             AccessControl: Private
             BucketName: !Ref pCloudTrailBucket
+            BucketEncryption:
+                ServerSideEncryptionConfiguration: 
+                - ServerSideEncryptionByDefault:
+                    SSEAlgorithm: AES256
             VersioningConfiguration:
                 Status: Enabled
             LoggingConfiguration:
-                DestinationBucketName: !Ref rArchiveLogsBucket
+                DestinationBucketName: !Ref rS3LogsBucket
                 LogFilePrefix: cloudtraillogs
     rCloudTrailS3Policy:
         Type: AWS::S3::BucketPolicy
@@ -198,24 +162,20 @@ Resources:
                     Effect: Deny
                     Principal: '*'
                     Resource: !Sub arn:aws:s3:::${rCloudTrailBucket}/*
-                  - Sid: DenyUnEncryptedObjectUploads
-                    Effect: Deny
-                    Principal: '*'
-                    Action: s3:PutObject
-                    Resource: !Sub arn:aws:s3:::${rCloudTrailBucket}/*
-                    Condition:
-                        StringNotEquals:
-                            s3:x-amz-server-side-encryption: AES256
     rVpcFlowLogsBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
         Properties:
             AccessControl: Private
             BucketName: !Ref pVpcFlowLogsBucket
+            BucketEncryption:
+                ServerSideEncryptionConfiguration: 
+                - ServerSideEncryptionByDefault:
+                    SSEAlgorithm: AES256
             VersioningConfiguration:
                 Status: Enabled
             LoggingConfiguration:
-                DestinationBucketName: !Ref rArchiveLogsBucket
+                DestinationBucketName: !Ref rS3LogsBucket
                 LogFilePrefix: vpcflowlogs
     rVpcFlowLogsS3Policy:
         Type: AWS::S3::BucketPolicy
@@ -252,20 +212,19 @@ Resources:
                     Effect: Deny
                     Principal: '*'
                     Resource: !Sub arn:aws:s3:::${rVpcFlowLogsBucket}/*
-                  - Sid: DenyUnEncryptedObjectUploads
-                    Effect: Deny
-                    Principal: '*'
-                    Action: s3:PutObject
-                    Resource: !Sub arn:aws:s3:::${rVpcFlowLogsBucket}/*
-                    Condition:
-                        StringNotEquals:
-                            s3:x-amz-server-side-encryption: AES256
     rCFTemplateBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
         Properties:
             AccessControl: Private
             BucketName: !Ref pCFTemplateBucket
+            BucketEncryption:
+                ServerSideEncryptionConfiguration: 
+                - ServerSideEncryptionByDefault:
+                    SSEAlgorithm: AES256
+            LoggingConfiguration:
+                DestinationBucketName: !Ref rS3LogsBucket
+                LogFilePrefix: cftemplates
     rCFTemplateBucketS3Policy:
         Type: AWS::S3::BucketPolicy
         DependsOn: rCFTemplateBucket
@@ -281,19 +240,9 @@ Resources:
                     Condition:
                         Bool:
                             aws:SecureTransport: false
-                  - Sid: DenyUnEncryptedObjectUploads
-                    Effect: Deny
-                    Principal: '*'
-                    Action: s3:PutObject
-                    Resource: !Sub arn:aws:s3:::${rCFTemplateBucket}/*
-                    Condition:
-                        StringNotEquals:
-                            s3:x-amz-server-side-encryption: AES256
 Outputs:
     rS3LogsBucket:
         Value: !Ref rS3LogsBucket
-    rArchiveLogsBucket:
-        Value: !Ref rArchiveLogsBucket
     rConfigBucket:
         Value: !Ref rConfigBucket
     rCloudTrailBucket:

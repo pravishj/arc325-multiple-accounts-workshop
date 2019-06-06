@@ -8,7 +8,15 @@ Parameters:
     pCloudTrailBucketName:
         Description: Existing S3 bucket in the central logging account to which you have access
         Type: String
-        Default: loggingbuckets-rcloudtrailbucket-examplebucketname
+        Default: ''
+    pCloudWatchLogsRoleName:
+        Description: CloudWatch Logs Role Name
+        Type: String
+        Default: 'CloudWatchLogsRole'
+    pCloudTrailRoleName:
+        Description: CloudTrail Logs Role Name
+        Type: String
+        Default: 'CloudTrailRole'
 Resources:
     rSecurityAlarmTopic:
         Type: AWS::SNS::Topic
@@ -29,6 +37,7 @@ Resources:
     rCloudWatchLogsRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Ref pCloudWatchLogsRoleName
             AssumeRolePolicyDocument:
                 Statement:
                   - Effect: Allow
@@ -47,17 +56,16 @@ Resources:
                         Effect: Allow
                         Action:
                           - logs:CreateLogStream
-                        Resource: !Sub
-                          - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
+                        Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
                       - Sid: AWSCloudTrailPutLogEvents
                         Effect: Allow
                         Action:
                           - logs:PutLogEvents
-                        Resource: !Sub
-                          - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
+                        Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${rCloudTrailLogGroup}:log-stream:*
     rCloudTrailRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName : !Ref pCloudTrailRoleName
             AssumeRolePolicyDocument:
                 Statement:
                   - Effect: Allow
@@ -75,14 +83,12 @@ Resources:
                       - Effect: Allow
                         Action:
                           - s3:ListBucket
-                        Resource: !Sub
-                          - arn:aws:s3:::${pCloudTrailBucketName}
+                        Resource: !Sub arn:aws:s3:::${pCloudTrailBucketName}
                       - Effect: Allow
                         Action:
                           - s3:PutObject
                           - s3:GetObject
-                        Resource: !Sub
-                          - arn:aws:s3:::${pCloudTrailBucketName}/*
+                        Resource: !Sub arn:aws:s3:::${pCloudTrailBucketName}/*    
     rCloudTrailProfile:
         Type: AWS::IAM::InstanceProfile
         DependsOn: rCloudTrailRole
