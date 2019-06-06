@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Configure the Temporary cross account role.
+Description: Configure the Temporary Cross account Access to switch roles.
 
 Parameters:
   AdministratorAccountId:
@@ -28,7 +28,7 @@ Resources:
   SSAccountAccesspwrRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: SSAccountAccessRole
+      RoleName: SSAccountAccessRole_pwrusr
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -40,11 +40,11 @@ Resources:
               - sts:AssumeRole
       Path: /
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AdministratorAccess
+        - arn:aws:iam::042623111607:role/SSAccountAccessRole_pwrusr
   SSAccountAccessUsrRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: SSAccountAccessRole
+      RoleName: SSAccountAccessRole_read
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -56,4 +56,4 @@ Resources:
               - sts:AssumeRole
       Path: /
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AdministratorAccess
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
